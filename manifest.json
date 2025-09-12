@@ -1,0 +1,12 @@
+{
+    "display_name": "inventory",
+    "loading_order": 1000,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "Pattanaseth",
+    "version": "0.0.1",
+    "homePage": "https://github.com/Pattanaseth/sillytavern_self_inventory",
+    "auto_update": true
+}
