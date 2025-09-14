@@ -1,44 +1,88 @@
-// Entry point
-const MODULE_NAME = 'my_ui_extension';
+import { SlashCommand } from "../../../slash-commands/SlashCommand.js";
+import fs from "fs";
+import path from "path";
 
-(async function() {
-  const { getContext } = SillyTavern;
-  const ctx = getContext();
+const MODULE_NAME = "inventory";
+const dataFile = path.join(process.cwd(), "extensions", MODULE_NAME, "inventory_data.json");
 
-  // Ensure settings object
-  const defaultSettings = {
-    enabled: true,
-    greeting: "Hello, SillyTavern!"
-  };
-
-  function getSettings() {
-    if (!ctx.extensionSettings[MODULE_NAME]) {
-      ctx.extensionSettings[MODULE_NAME] = structuredClone(defaultSettings);
+let data = {
+    slots: {
+        head: "Empty",
+        neck: "Empty",
+        torso: "Empty",
+        legs: "Empty",
+        leftHand: "Empty",
+        rightHand: "Empty"
     }
-    const s = ctx.extensionSettings[MODULE_NAME];
-    // add missing defaults
-    for (const key of Object.keys(defaultSettings)) {
-      if (!(key in s)) s[key] = defaultSettings[key];
+};
+
+function loadData() {
+    try {
+        if (fs.existsSync(dataFile)) {
+            data = JSON.parse(fs.readFileSync(dataFile, "utf-8"));
+        } else {
+            saveData();
+        }
+    } catch (err) {
+        console.error(`[${MODULE_NAME}] Failed to load data:`, err);
     }
-    return s;
-  }
+}
 
-  function saveSettings() {
-    ctx.saveSettingsDebounced();
-  }
-
-  // Listen for app‐ready, so UI elements are present
-  ctx.eventSource.on(ctx.event_types.APP_READY, () => {
-    const settings = getSettings();
-    if (settings.enabled) {
-      // Example: add a greeting banner at top
-      const banner = document.createElement('div');
-      banner.innerText = settings.greeting;
-      banner.style.background = '#eee';
-      banner.style.padding = '10px';
-      banner.style.textAlign = 'center';
-      document.body.prepend(banner);
+function saveData() {
+    try {
+        fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+    } catch (err) {
+        console.error(`[${MODULE_NAME}] Failed to save data:`, err);
     }
-  });
+}
 
-})();
+function createPopup() {
+    loadData();
+
+    const overlay = document.createElement("div");
+    overlay.className = "inventory-overlay";
+    overlay.addEventListener("click", () => document.body.removeChild(overlay));
+
+    const window = document.createElement("div");
+    window.className = "inventory-window";
+    window.addEventListener("click", e => e.stopPropagation());
+
+    const title = document.createElement("h2");
+    title.innerText = "Inventory";
+    window.appendChild(title);
+
+    const list = document.createElement("div");
+    list.className = "inventory-list";
+
+    for (const slot of Object.keys(data.slots)) {
+        const row = document.createElement("div");
+        row.className = "inventory-slot";
+
+        const label = document.createElement("span");
+        label.innerText = slot;
+
+        const input = document.createElement("input");
+        input.value = data.slots[slot];
+        input.addEventListener("input", () => {
+            data.slots[slot] = input.value;
+            saveData();
+        });
+
+        row.append(label, input);
+        list.appendChild(row);
+    }
+
+    window.appendChild(list);
+    overlay.appendChild(window);
+    document.body.appendChild(overlay);
+}
+
+SlashCommand.register(
+    MODULE_NAME,
+    "/inventory",
+    "Open your inventory window",
+    () => {
+        createPopup();
+        return "Opening Inventory...";
+    }
+);

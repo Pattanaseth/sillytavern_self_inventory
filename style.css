@@ -1,5 +1,30 @@
-/* simple styling if needed */
-div.my-banner {
-  font-size: 1.2em;
-  color: #333;
+.inventory-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.inventory-window {
+    background: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    width: 300px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+}
+
+.inventory-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.inventory-slot {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
 }
