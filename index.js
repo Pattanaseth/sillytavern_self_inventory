@@ -1,82 +1,40 @@
-const MODULE_NAME = 'my_ui_extension';
-
+// Entry point for your extension
 (async function () {
-  const { getContext } = SillyTavern;
-  const ctx = getContext();
+    const MODULE_NAME = "my_inventory";
 
-  // default settings
-  const defaultSettings = {
-    enabled: true,
-    greeting: "Hello, SillyTavern!"
-  };
+    // Register the slash command /inventory
+    const ctx = window.getContext?.(); // Get SillyTavern context
+    if (!ctx) return console.error("SillyTavern context not found!");
 
-  function getSettings() {
-    if (!ctx.extensionSettings[MODULE_NAME]) {
-      ctx.extensionSettings[MODULE_NAME] = structuredClone(defaultSettings);
-    }
-    const s = ctx.extensionSettings[MODULE_NAME];
-    for (const k in defaultSettings) {
-      if (!(k in s)) s[k] = defaultSettings[k];
-    }
-    return s;
-  }
+    ctx.registerSlashCommand({
+        name: "inventory",
+        description: "Show your inventory items",
+        arguments: [],
+        run: async (args, context) => {
+            // Example inventory data
+            const inventory = [
+                { name: "Sword", quantity: 1 },
+                { name: "Shield", quantity: 1 },
+                { name: "Health Potion", quantity: 5 },
+            ];
 
-  function saveSettings() {
-    ctx.saveSettingsDebounced();
-  }
+            // Format message
+            const messageText = inventory
+                .map(item => `${item.name} x${item.quantity}`)
+                .join("\n");
 
-  function createUI() {
-    const settings = getSettings();
+            // Add message to chat
+            context.addOneMessage({
+                id: context.uuidv4(),
+                type: "message",
+                text: messageText,
+                sender: "system",
+                timestamp: Date.now(),
+            });
 
-    const extContainer = document.createElement('div');
-    extContainer.classList.add('my-ui-ext-container');
-
-    extContainer.innerHTML = `
-      <label>
-        <input type="checkbox" id="myext_enabled" ${settings.enabled ? 'checked' : ''}>
-        Enable Extension
-      </label>
-      <br>
-      <label>
-        Greeting:
-        <input type="text" id="myext_greeting" value="${settings.greeting}">
-      </label>
-      <br><br>
-      <button class="menu_button" id="myext_save">Save</button>
-    `;
-
-    extContainer.querySelector('#myext_save').addEventListener('click', () => {
-      settings.enabled = extContainer.querySelector('#myext_enabled').checked;
-      settings.greeting = extContainer.querySelector('#myext_greeting').value;
-      saveSettings();
-      toastr.success('Settings saved!');
+            return true; // Command executed successfully
+        }
     });
 
-    // Insert UI under the Extensions tab
-    const target = document.querySelector('#extensions_settings');
-    if (target) {
-      const wrapper = document.createElement('details');
-      wrapper.classList.add('my-ui-ext-wrapper');
-      const summary = document.createElement('summary');
-      summary.textContent = 'My UI Extension';
-      wrapper.append(summary, extContainer);
-      target.appendChild(wrapper);
-    }
-  }
-
-  ctx.eventSource.on(ctx.event_types.APP_READY, () => {
-    const settings = getSettings();
-    if (settings.enabled) {
-      const banner = document.createElement('div');
-      banner.innerText = settings.greeting;
-      banner.style.background = '#eee';
-      banner.style.padding = '10px';
-      banner.style.textAlign = 'center';
-      document.body.prepend(banner);
-    }
-  });
-
-  ctx.eventSource.on(ctx.event_types.EXTENSIONS_LOADED, () => {
-    createUI();
-  });
+    console.log("[Inventory] /inventory command registered.");
 })();
