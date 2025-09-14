@@ -1,32 +1,13 @@
-(async function() {
-    const MODULE_NAME = "my_inventory";
+jQuery(async function () {
+    await addDiceRollButton(); // You can keep or remove this if you don't want dice UI
 
-    // Wait until getContext() exists
-    function getCtx() {
-        if (window.getContext) return window.getContext();
-        return null;
-    }
+    registerFunctionTools(); // Optional, can keep if you still want dice tool support
 
-    function waitForCtx() {
-        return new Promise(resolve => {
-            const interval = setInterval(() => {
-                const ctx = getCtx();
-                if (ctx) {
-                    clearInterval(interval);
-                    resolve(ctx);
-                }
-            }, 100);
-        });
-    }
-
-    const ctx = await waitForCtx();
-
-    // Register the /inventory command
-    ctx.registerSlashCommand({
-        name: "inventory",
-        description: "Show your inventory items",
-        arguments: [],
-        run: async (args, context) => {
+    // Register /inventory instead of /roll
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'inventory', // changed from 'roll'
+        aliases: ['inv'],  // optional alias
+        callback: async (args, value, context) => {
             // Example inventory
             const inventory = [
                 { name: "Sword", quantity: 1 },
@@ -38,18 +19,23 @@
                 .map(item => `${item.name} x${item.quantity}`)
                 .join("\n");
 
-            // Add system message to chat
-            context.addOneMessage({
-                id: context.uuidv4(),
+            // Send system message
+            const ctx = SillyTavern.getContext();
+            ctx.addOneMessage({
+                id: ctx.uuidv4(),
                 type: "message",
                 text: messageText,
                 sender: "system",
                 timestamp: Date.now(),
             });
 
-            return true;
-        }
-    });
+            return messageText; // returns for slash command processing
+        },
+        helpString: 'Show your inventory items.',
+        returns: 'inventory list',
+        namedArgumentList: [],   // no special arguments
+        unnamedArgumentList: [],
+    }));
 
-    console.log("[Inventory] /inventory command successfully registered!");
-})();
+    console.log('[Inventory] /inventory command registered!');
+});
