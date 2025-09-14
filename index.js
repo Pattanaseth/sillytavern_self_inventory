@@ -1,88 +1,82 @@
-import { SlashCommand } from "../../../slash-commands/SlashCommand.js";
-import fs from "fs";
-import path from "path";
+const MODULE_NAME = 'my_ui_extension';
 
-const MODULE_NAME = "inventory";
-const dataFile = path.join(process.cwd(), "extensions", MODULE_NAME, "inventory_data.json");
+(async function () {
+  const { getContext } = SillyTavern;
+  const ctx = getContext();
 
-let data = {
-    slots: {
-        head: "Empty",
-        neck: "Empty",
-        torso: "Empty",
-        legs: "Empty",
-        leftHand: "Empty",
-        rightHand: "Empty"
+  // default settings
+  const defaultSettings = {
+    enabled: true,
+    greeting: "Hello, SillyTavern!"
+  };
+
+  function getSettings() {
+    if (!ctx.extensionSettings[MODULE_NAME]) {
+      ctx.extensionSettings[MODULE_NAME] = structuredClone(defaultSettings);
     }
-};
-
-function loadData() {
-    try {
-        if (fs.existsSync(dataFile)) {
-            data = JSON.parse(fs.readFileSync(dataFile, "utf-8"));
-        } else {
-            saveData();
-        }
-    } catch (err) {
-        console.error(`[${MODULE_NAME}] Failed to load data:`, err);
+    const s = ctx.extensionSettings[MODULE_NAME];
+    for (const k in defaultSettings) {
+      if (!(k in s)) s[k] = defaultSettings[k];
     }
-}
+    return s;
+  }
 
-function saveData() {
-    try {
-        fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
-    } catch (err) {
-        console.error(`[${MODULE_NAME}] Failed to save data:`, err);
+  function saveSettings() {
+    ctx.saveSettingsDebounced();
+  }
+
+  function createUI() {
+    const settings = getSettings();
+
+    const extContainer = document.createElement('div');
+    extContainer.classList.add('my-ui-ext-container');
+
+    extContainer.innerHTML = `
+      <label>
+        <input type="checkbox" id="myext_enabled" ${settings.enabled ? 'checked' : ''}>
+        Enable Extension
+      </label>
+      <br>
+      <label>
+        Greeting:
+        <input type="text" id="myext_greeting" value="${settings.greeting}">
+      </label>
+      <br><br>
+      <button class="menu_button" id="myext_save">Save</button>
+    `;
+
+    extContainer.querySelector('#myext_save').addEventListener('click', () => {
+      settings.enabled = extContainer.querySelector('#myext_enabled').checked;
+      settings.greeting = extContainer.querySelector('#myext_greeting').value;
+      saveSettings();
+      toastr.success('Settings saved!');
+    });
+
+    // Insert UI under the Extensions tab
+    const target = document.querySelector('#extensions_settings');
+    if (target) {
+      const wrapper = document.createElement('details');
+      wrapper.classList.add('my-ui-ext-wrapper');
+      const summary = document.createElement('summary');
+      summary.textContent = 'My UI Extension';
+      wrapper.append(summary, extContainer);
+      target.appendChild(wrapper);
     }
-}
+  }
 
-function createPopup() {
-    loadData();
-
-    const overlay = document.createElement("div");
-    overlay.className = "inventory-overlay";
-    overlay.addEventListener("click", () => document.body.removeChild(overlay));
-
-    const window = document.createElement("div");
-    window.className = "inventory-window";
-    window.addEventListener("click", e => e.stopPropagation());
-
-    const title = document.createElement("h2");
-    title.innerText = "Inventory";
-    window.appendChild(title);
-
-    const list = document.createElement("div");
-    list.className = "inventory-list";
-
-    for (const slot of Object.keys(data.slots)) {
-        const row = document.createElement("div");
-        row.className = "inventory-slot";
-
-        const label = document.createElement("span");
-        label.innerText = slot;
-
-        const input = document.createElement("input");
-        input.value = data.slots[slot];
-        input.addEventListener("input", () => {
-            data.slots[slot] = input.value;
-            saveData();
-        });
-
-        row.append(label, input);
-        list.appendChild(row);
+  ctx.eventSource.on(ctx.event_types.APP_READY, () => {
+    const settings = getSettings();
+    if (settings.enabled) {
+      const banner = document.createElement('div');
+      banner.innerText = settings.greeting;
+      banner.style.background = '#eee';
+      banner.style.padding = '10px';
+      banner.style.textAlign = 'center';
+      document.body.prepend(banner);
     }
+  });
 
-    window.appendChild(list);
-    overlay.appendChild(window);
-    document.body.appendChild(overlay);
-}
-
-SlashCommand.register(
-    MODULE_NAME,
-    "/inventory",
-    "Open your inventory window",
-    () => {
-        createPopup();
-        return "Opening Inventory...";
-    }
-);
+  ctx.eventSource.on(ctx.event_types.EXTENSIONS_LOADED, () => {
+    createUI();
+  });
+})();
